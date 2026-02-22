@@ -1,0 +1,71 @@
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+<script>
+let tg = window.Telegram.WebApp;
+tg.expand();
+
+async function generateAdvancedDeviceId() {
+
+    function getCanvasFingerprint() {
+        const canvas = document.createElement("canvas");
+        const ctx = canvas.getContext("2d");
+        ctx.textBaseline = "top";
+        ctx.font = "16px Arial";
+        ctx.fillText("TelegramSecureVerification", 2, 2);
+        return canvas.toDataURL();
+    }
+
+    function getWebGLFingerprint() {
+        const canvas = document.createElement("canvas");
+        const gl = canvas.getContext("webgl");
+        if (!gl) return "no-webgl";
+        const debugInfo = gl.getExtension("WEBGL_debug_renderer_info");
+        return debugInfo ?
+            gl.getParameter(debugInfo.UNMASKED_RENDERER_WEBGL) + "|" +
+            gl.getParameter(debugInfo.UNMASKED_VENDOR_WEBGL)
+            : "masked";
+    }
+
+    const rawData = [
+        navigator.userAgent,
+        navigator.language,
+        navigator.platform,
+        navigator.hardwareConcurrency,
+        screen.width,
+        screen.height,
+        screen.colorDepth,
+        new Date().getTimezoneOffset(),
+        Telegram.WebApp.version,
+        getCanvasFingerprint(),
+        getWebGLFingerprint()
+    ].join("||");
+
+    const encoder = new TextEncoder();
+    const data = encoder.encode(rawData);
+    const hashBuffer = await crypto.subtle.digest("SHA-256", data);
+    const hashArray = Array.from(new Uint8Array(hashBuffer));
+    return hashArray.map(b => b.toString(16).padStart(2, "0")).join("");
+}
+
+generateAdvancedDeviceId().then(deviceId => {
+
+    fetch("/api/verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+            initData: Telegram.WebApp.initData,
+            deviceId: deviceId
+        })
+    })
+    .then(res => res.json())
+    .then(data => {
+        if(data.status === "success"){
+            document.body.innerHTML = "<h2>Verified ✅</h2>";
+            setTimeout(() => tg.close(), 1500);
+        } else {
+            alert("Blocked: " + data.status);
+        }
+    });
+
+});
+  </script>
