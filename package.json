@@ -1,0 +1,9 @@
+{
+  "name": "telegram-secure-verification",
+  "version": "1.0.0",
+  "type": "module",
+  "dependencies": {
+    "@vercel/kv": "^1.0.0",
+    "node-fetch": "^3.3.2"
+  }
+}
